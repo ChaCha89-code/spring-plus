@@ -17,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional // 해결1. (readOnly = true)
@@ -47,10 +49,21 @@ public class TodoService {
         );
     }
 
-    public Page<TodoResponse> getTodos(int page, int size) {
+    public Page<TodoResponse> getTodos(int page, int size, String weather, LocalDateTime startDate, LocalDateTime endDate) {
+
+        Page<Todo> todos;
+
         Pageable pageable = PageRequest.of(page - 1, size);
 
-        Page<Todo> todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
+        if(weather != null && startDate != null && endDate != null) {
+            todos = todoRepository.findByWeatherAndModifiedAtBetweenOrderByModifiedAtDesc(weather, startDate, endDate, pageable);
+        } else if (weather != null) {
+            todos = todoRepository.findByWeatherOrderByModifiedAtDesc(weather, pageable);
+        } else if(startDate != null && endDate != null) {
+            todos = todoRepository.findByModifiedAtBetweenOrderByModifiedAtDesc(startDate, endDate, pageable);
+        } else {
+            todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
+        }
 
         return todos.map(todo -> new TodoResponse(
                 todo.getId(),
@@ -80,18 +93,3 @@ public class TodoService {
         );
     }
 }
-
-// Attributes of @Transactional
-// readOnly, propagation enum (REQUIRED REQUIRES_NEW, SUPPORTS, MANDATORY, NOT_SUPPORTED, NEVER, NESTED),
-// isolation, timeout, rollbackFor / noRollbackFor
-// @Transactional(
-//         readOnly = false,
-//         propagation = Propagation.REQUIRES_NEW,
-//         isolation = Isolation.READ_COMMITTED,
-//         timeout = 20, // seconds
-//         rollbackFor = {RuntimeException.class, IOException.class},
-//         noRollbackFor = {IllegalArgumentException.class}
-// )
-// public void someBusinessLogic() {
-//     // ...
-// }
